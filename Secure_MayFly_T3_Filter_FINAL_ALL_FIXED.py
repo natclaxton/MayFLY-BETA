@@ -41,6 +41,7 @@ DOMESTIC_ROUTES = [
     "LHRABZ","LHRINV","LHRGLA","LHREDI","LHRBHD",
     "LHRNCL","LHRJER","LHRMAN","LHRBFS","LHRDUB"
 ]
+
 T3_FLIGHTS = [
     "BA159","BA227","BA247","BA253","BA289","BA336","BA340","BA350","BA366","BA368","BA370",
     "BA372","BA374","BA376","BA378","BA380","BA382","BA386","BA408","BA410","BA416","BA418",
@@ -89,6 +90,7 @@ class BA_PDF(FPDF):
         headers = ['Flight No','Aircraft','Route','ETD','Conformance','Load']
         widths  = [30,25,30,30,30,20]
 
+        # Header row
         self.set_font('Arial', 'B', 8.5)
         self.set_fill_color(*BA_BLUE)
         self.set_text_color(255, 255, 255)
@@ -96,6 +98,7 @@ class BA_PDF(FPDF):
             self.cell(widths[i], 6, h, 1, 0, 'C', True)
         self.ln()
 
+        # Data rows
         self.set_font('Arial', '', 7.5)
         self.set_text_color(0)
         for _, row in data.iterrows():
@@ -151,6 +154,8 @@ def parse_txt(file_content, filter_type):
     if not df.empty:
         if filter_type == "Flights above 90%":
             df = df[df["Load Factor Numeric"] >= 90]
+        elif filter_type == "Flights above 70%":
+            df = df[df["Load Factor Numeric"] >= 70]
         elif filter_type == "Domestic":
             df = df[df["Route"].isin(DOMESTIC_ROUTES)]
         df = df.sort_values(by="ETD Local")
@@ -172,9 +177,9 @@ date_str = selected_date.strftime("%d %B")
 # 2. Station selector
 station = st.selectbox("Select Station", ["All Stations","T3","T5"])
 
-# 3. Load/Domestic filter
+# 3. Load/Domestic filter (with new 70% option)
 filter_option = st.radio("Choose Filter",
-    ["All Flights","Flights above 90%","Domestic"]
+    ["All Flights","Flights above 90%","Flights above 70%","Domestic"]
 )
 
 st.markdown("### Paste your MayFly data below")
