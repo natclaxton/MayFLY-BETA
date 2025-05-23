@@ -113,20 +113,19 @@ class BA_PDF(FPDF):
             self.ln()
 
 def parse_txt(file_content, filter_type):
-    lines  = file_content.strip().split('\n')
+    lines = file_content.strip().split('\n')
     flights = []
     utc_tz = pytz.utc
-    i      = 0
+    i = 0
 
     while i < len(lines):
         if lines[i].startswith("BA"):
             try:
-                fn   = lines[i].strip()
-                ac   = lines[i+2].strip()
-                rt   = re.sub(r"\s+", "", lines[i+3].strip().upper())
-                m1   = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z",
-                                 lines[i+4])
-                m2   = re.search(r"(\d{1,3})%Status", lines[i+8])
+                fn = lines[i].strip()
+                ac = lines[i+2].strip()
+                rt = re.sub(r"\s+", "", lines[i+3].strip().upper())
+                m1 = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i+4])
+                m2 = re.search(r"(\d{1,3})%Status", lines[i+8])
                 if m1 and m2:
                     etd_str = m1.group(1)
                     load    = int(m2.group(1))
@@ -162,11 +161,12 @@ st.set_page_config(page_title="British Airways MayFly Generator",
                    page_icon="")
 st.title("British Airways MayFly PDF Generator")
 
-# 1. Date selector
-selected_date = st.date_input("Select MayFly Date", datetime.today())
-#    Display UK‐format date below
-uk_date = selected_date.strftime("%d/%m/%Y")
-st.caption(f"Date (UK format): {uk_date}")
+# 1. Date selector (UK format)
+selected_date = st.date_input(
+    "Select MayFly Date",
+    datetime.today(),
+    format="DD/MM/YYYY"
+)
 date_str = selected_date.strftime("%d %B")
 
 # 2. Station selector
