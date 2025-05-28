@@ -15,26 +15,40 @@ correct_password_hash = get_hashed_password("MayFly2025!")
 def check_password():
     def password_entered():
         entered_hash = get_hashed_password(st.session_state["password"])
-        if entered_hash == correct_password_hash:
-            st.session_state["password_correct"] = True
+        st.session_state["password_correct"] = (entered_hash == correct_password_hash)
+        if st.session_state["password_correct"]:
             del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.text_input("Enter password:", type="password",
-                      on_change=password_entered, key="password")
+        st.text_input("Enter password:", type="password", on_change=password_entered, key="password")
         return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("Enter password:", type="password",
-                      on_change=password_entered, key="password")
+    if not st.session_state.get("password_correct", False):
+        st.text_input("Enter password:", type="password", on_change=password_entered, key="password")
         st.error("😕 Password incorrect. Try again.")
         return False
-    else:
-        return True
+    return True
 
 if not check_password():
     st.stop()
+
+# === Streamlit Page Config ===
+st.set_page_config(
+    page_title="BA - MayFly Generator",
+    page_icon="✈️",
+    layout="centered"
+)
+
+# === Header with Logo and Title ===
+col1, col2 = st.columns([1, 6])
+with col1:
+    st.image("BA_logo.png", width=100)
+with col2:
+    st.markdown(
+        "<h1 style='color: #3e577d; margin-top: 0;'>BA – MayFly Generator</h1>",
+        unsafe_allow_html=True
+    )
+
+st.markdown("---")
 
 # === Flight lists ===
 DOMESTIC_ROUTES = [
@@ -62,9 +76,9 @@ LGW_FLIGHTS = [
 
 # === PDF Styling ===
 BA_BLUE   = (0, 32, 91)
-GREEN     = (198, 239, 206)   # <70% LF
-AMBER     = (255, 229, 153)   # 70–90% LF
-LIGHT_RED = (255, 204, 204)   # >90% LF
+GREEN     = (198, 239, 206)  # <70% LF
+AMBER     = (255, 229, 153)  # 70–90% LF
+LIGHT_RED = (255, 204, 204)  # >90% LF
 
 class BA_PDF(FPDF):
     def __init__(self, date_str, *args, **kwargs):
@@ -82,8 +96,7 @@ class BA_PDF(FPDF):
         self.set_text_color(0)
         self.multi_cell(0, 5,
             "Please note, Conformance times below are for landside only. "
-            "If you're working in connections, add 5 minutes to the conformance time. "
-            "E.g. landside 10:00, connections 10:05.",
+            "If you're working in connections, add 5 minutes to the conformance time.",
             align='C'
         )
         self.ln(3)
@@ -136,15 +149,14 @@ def parse_txt(file_content, filter_type):
     flights = []
     utc_tz = pytz.utc
     i = 0
-
     while i < len(lines):
         if lines[i].startswith("BA"):
             try:
-                fn     = lines[i].strip()
-                ac     = lines[i+2].strip()
-                rt     = re.sub(r"\s+", "", lines[i+3].strip().upper())
-                m1     = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i+4])
-                m2     = re.search(r"(\d{1,3})%Status", lines[i+8])
+                fn  = lines[i].strip()
+                ac  = lines[i+2].strip()
+                rt  = re.sub(r"\s+", "", lines[i+3].strip().upper())
+                m1  = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i+4])
+                m2  = re.search(r"(\d{1,3})%Status", lines[i+8])
                 if m1 and m2:
                     etd_str = m1.group(1)
                     load    = int(m2.group(1))
@@ -178,11 +190,6 @@ def parse_txt(file_content, filter_type):
     return df
 
 # === Streamlit UI ===
-st.set_page_config(page_title="British Airways MayFly Generator",
-                   page_icon="")
-st.title("BA - Mayfly Generator")
-
-# 1. Date selector (UK format)
 selected_date = st.date_input(
     "Select MayFly Date",
     datetime.today(),
@@ -190,12 +197,7 @@ selected_date = st.date_input(
 )
 date_str = selected_date.strftime("%d %B")
 
-# 2. Station selector
-station = st.selectbox("Select Station",
-    ["All Stations","T3","T5","LGW"]
-)
-
-# 3. Load/Domestic filter (with 70% option)
+station = st.selectbox("Select Station", ["All Stations","T3","T5","LGW"])
 filter_option = st.radio("Choose Filter",
     ["All Flights","Flights above 90%","Flights above 70%","Domestic"]
 )
@@ -206,7 +208,6 @@ text_input = st.text_area("Paste content from Ops Dashboard here")
 if text_input:
     df = parse_txt(text_input, filter_option)
 
-    # Station filtering
     if station == "T3":
         df = df[df["Flight Number"].isin(T3_FLIGHTS)]
     elif station == "T5":
