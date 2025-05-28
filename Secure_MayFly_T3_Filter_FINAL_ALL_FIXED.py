@@ -68,7 +68,7 @@ st.markdown("""
 col1, col2 = st.columns([1, 6])
 with col1:
     st.markdown(
-        '<img src="BA_logo.png" alt="British Airways logo" width="100">',
+        '<img src="R.png" alt="British Airways logo" width="100">',
         unsafe_allow_html=True
     )
 with col2:
