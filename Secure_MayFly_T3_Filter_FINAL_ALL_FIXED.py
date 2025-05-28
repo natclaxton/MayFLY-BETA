@@ -180,7 +180,7 @@ def parse_txt(file_content, filter_type):
 # === Streamlit UI ===
 st.set_page_config(page_title="British Airways MayFly Generator",
                    page_icon="")
-st.title("BA Mayfly Generator")
+st.title("BA - Mayfly Generator")
 
 # 1. Date selector (UK format)
 selected_date = st.date_input(
