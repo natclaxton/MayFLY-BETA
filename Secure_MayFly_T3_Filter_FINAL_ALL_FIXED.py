@@ -6,59 +6,85 @@ from fpdf import FPDF
 import hashlib
 import pytz
 
-# === Secure Password Protection ===
+# === Secure Password Hashing ===
 def get_hashed_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-correct_password_hash = get_hashed_password("MayFly2025!")
+CORRECT_PASSWORD_HASH = get_hashed_password("MayFly2025!")
 
-def check_password():
-    def password_entered():
-        entered_hash = get_hashed_password(st.session_state["password"])
-        if entered_hash == correct_password_hash:
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
+# === Entrance Page – Welcome & Password ===
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+def login_page():
+    st.markdown("<h1 style='text-align:center;'>WELCOME TO THE MAYFLY GENERATOR</h1>", unsafe_allow_html=True)
+    pwd = st.text_input("ENTER PASSWORD", type="password", key="login_pwd")
+    if st.button("SUBMIT"):
+        if get_hashed_password(pwd) == CORRECT_PASSWORD_HASH:
+            st.session_state.authenticated = True
         else:
-            st.session_state["password_correct"] = False
+            st.error("❌ PASSWORD INCORRECT. TRY AGAIN.")
 
-    if "password_correct" not in st.session_state:
-        st.text_input("Enter password:", type="password",
-                      on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("Enter password:", type="password",
-                      on_change=password_entered, key="password")
-        st.error("😕 Password incorrect. Try again.")
-        return False
-    else:
-        return True
-
-if not check_password():
+if not st.session_state.authenticated:
+    login_page()
     st.stop()
 
-# === Flight lists ===
+# === Page Config & Theming ===
+st.set_page_config(
+    page_title="BA – MayFly Generator",
+    page_icon="✈️",
+    layout="centered"
+)
+st.markdown("""
+<style>
+  /* center content */
+  .block-container { max-width:800px; margin:auto; }
+
+  /* white background, light-blue text */
+  [data-testid="stAppViewContainer"] {
+    background-color: #FFFFFF !important;
+    color: #69c9ff !important;
+    font-family: "Mylus Modern", sans-serif;
+  }
+  /* style inputs/buttons */
+  .stTextInput label,
+  .stDateInput label,
+  .stSelectbox label,
+  .stRadio label,
+  .stTextArea label,
+  .stButton>button {
+    text-transform: uppercase;
+    color: #69c9ff !important;
+    font-family: "Mylus Modern", sans-serif;
+  }
+  .stButton>button {
+    background-color: #69c9ff !important;
+    color: #FFFFFF !important;
+  }
+</style>
+""", unsafe_allow_html=True)
+
+# === Header with Logo & Title ===
+col1, col2 = st.columns([1, 6])
+with col1:
+    st.markdown(
+        '<img src="BA_logo.png" alt="British Airways logo" width="100">',
+        unsafe_allow_html=True
+    )
+with col2:
+    st.markdown(
+        "<h1 style='color: #3e577d; margin-top:0;'>BA – MAYFLY GENERATOR</h1>",
+        unsafe_allow_html=True
+    )
+st.markdown("---")
+
+# === Flight Lists ===
 DOMESTIC_ROUTES = [
     "LHRABZ","LHRINV","LHRGLA","LHREDI","LHRBHD",
     "LHRNCL","LHRJER","LHRMAN","LHRBFS","LHRDUB"
 ]
-
-T3_FLIGHTS = [
-    "BA159","BA227","BA247","BA253","BA289","BA336","BA340","BA350","BA366","BA368","BA370",
-    "BA372","BA374","BA376","BA378","BA380","BA382","BA386","BA408","BA410","BA416","BA418",
-    "BA422","BA490","BA492","BA498","BA532","BA608","BA616","BA618","BA690","BA696","BA700",
-    "BA702","BA704","BA706","BA760","BA762","BA764","BA766","BA770","BA790","BA792","BA802",
-    "BA806","BA848","BA852","BA854","BA856","BA858","BA860","BA862","BA864","BA866","BA868",
-    "BA870","BA872","BA874","BA882","BA884","BA886","BA890","BA892","BA896","BA918","BA920"
-]
-
-LGW_FLIGHTS = [
-    'BA2640','BA2704','BA2670','BA2740','BA2624','BA2748','BA2676','BA2758','BA2784','BA2610',
-    'BA2606','BA2574','BA2810','BA2666','BA2614','BA2716','BA2808','BA2660','BA2680','BA2720',
-    'BA2642','BA2520','BA2161','BA2037','BA2754','BA2239','BA1480','BA2159','BA2167','BA2780',
-    'BA2203','BA2702','BA2756','BA2263','BA2612','BA2794','BA2039','BA2812','BA2752','BA2273',
-    'BA2602','BA2682','BA2662','BA2608','BA2644','BA2650','BA2576','BA2590','BA2722','BA2816',
-    'BA2596','BA2656','BA2668','BA2672','BA2572'
-]
+T3_FLIGHTS = [ "...", "..."]  # (keep your full T3_FLIGHTS list here)
+LGW_FLIGHTS = [ "...", "..."] # (keep your full LGW_FLIGHTS list here)
 
 # === PDF Styling ===
 BA_BLUE   = (0, 32, 91)
@@ -73,162 +99,119 @@ class BA_PDF(FPDF):
 
     def header(self):
         self.set_fill_color(*BA_BLUE)
-        self.set_text_color(255, 255, 255)
-        self.set_font('Arial', 'B', 14)
-        self.cell(0, 10, f'MayFly {self.date_str} - British Airways',
-                  ln=True, align='C', fill=True)
+        self.set_text_color(255,255,255)
+        self.set_font('Arial','B',14)
+        self.cell(0,10,f'MayFly {self.date_str} - British Airways',ln=True,align='C',fill=True)
         self.ln(5)
-        self.set_font('Arial', 'I', 8)
+        self.set_font('Arial','I',8)
         self.set_text_color(0)
-        self.multi_cell(0, 5,
+        self.multi_cell(0,5,
             "Please note, Conformance times below are for landside only. "
-            "If you're working in connections, add 5 minutes to the conformance time. "
-            "E.g. landside 10:00, connections 10:05.",
+            "For connections, add 5 minutes.",
             align='C'
         )
         self.ln(3)
 
     def footer(self):
         self.set_y(-12)
-        self.set_font('Arial', 'I', 8)
+        self.set_font('Arial','I',8)
         self.set_text_color(100)
-        self.cell(0, 8,
-                  'Confidential © 2025  |  Generated by British Airways',
-                  0, 0, 'C')
+        self.cell(0,8,'Confidential © 2025  |  Generated by British Airways',0,0,'C')
 
     def flight_table(self, data):
         headers = ['Flight No','Aircraft','Route','ETD','Conformance','Load']
         widths  = [30,25,30,30,30,20]
 
         # Header row
-        self.set_font('Arial', 'B', 8.5)
+        self.set_font('Arial','B',8.5)
         self.set_fill_color(*BA_BLUE)
-        self.set_text_color(255, 255, 255)
-        for i, h in enumerate(headers):
-            self.cell(widths[i], 6, h, 1, 0, 'C', True)
+        self.set_text_color(255,255,255)
+        for i,h in enumerate(headers):
+            self.cell(widths[i],6,h,1,0,'C',True)
         self.ln()
 
         # Data rows
-        self.set_font('Arial', '', 7.5)
+        self.set_font('Arial','',7.5)
         self.set_text_color(0)
-        for _, row in data.iterrows():
-            for i, key in enumerate([
+        for _,row in data.iterrows():
+            for i,key in enumerate([
                 "Flight Number","Aircraft Type","Route",
                 "ETD","Conformance Time","Load Factor"
             ]):
                 fill = False
-                if key == "Load Factor":
-                    load = int(row["Load Factor"].rstrip('%'))
-                    if load < 70:
-                        self.set_fill_color(*GREEN)
-                        fill = True
-                    elif load <= 90:
-                        self.set_fill_color(*AMBER)
-                        fill = True
+                if key=="Load Factor":
+                    lf = int(row["Load Factor"].rstrip('%'))
+                    if lf < 70:
+                        self.set_fill_color(*GREEN); fill=True
+                    elif lf <= 90:
+                        self.set_fill_color(*AMBER); fill=True
                     else:
-                        self.set_fill_color(*LIGHT_RED)
-                        fill = True
-                self.cell(widths[i], 6, str(row[key]), 1, 0, 'C', fill)
+                        self.set_fill_color(*LIGHT_RED); fill=True
+                self.cell(widths[i],6,row[key],1,0,'C',fill)
             self.ln()
 
-def parse_txt(file_content, filter_type):
-    lines = file_content.strip().split('\n')
-    flights = []
-    utc_tz = pytz.utc
-    i = 0
-
-    while i < len(lines):
+def parse_txt(content, filter_type):
+    lines = content.strip().split('\n')
+    flights=[]
+    utc=pytz.utc
+    i=0
+    while i<len(lines):
         if lines[i].startswith("BA"):
             try:
-                fn     = lines[i].strip()
-                ac     = lines[i+2].strip()
-                rt     = re.sub(r"\s+", "", lines[i+3].strip().upper())
-                m1     = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i+4])
-                m2     = re.search(r"(\d{1,3})%Status", lines[i+8])
+                fn=lines[i].strip()
+                ac=lines[i+2].strip()
+                rt=re.sub(r"\s+","",lines[i+3].strip().upper())
+                m1=re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z",lines[i+4])
+                m2=re.search(r"(\d{1,3})%Status",lines[i+8])
                 if m1 and m2:
-                    etd_str = m1.group(1)
-                    load    = int(m2.group(1))
-                    eutc    = datetime.strptime(etd_str, "%H:%M")
-                    eutc    = utc_tz.localize(eutc)
-                    etd1    = (eutc + timedelta(hours=1)).strftime("%H:%M")
-                    conf    = (eutc + timedelta(minutes=25)).strftime("%H:%M")
+                    t=m1.group(1); lf=int(m2.group(1))
+                    dt=datetime.strptime(t,"%H:%M"); dt=utc.localize(dt)
+                    etd=(dt+timedelta(hours=1)).strftime("%H:%M")
+                    cnf=(dt+timedelta(minutes=25)).strftime("%H:%M")
                     flights.append({
-                        "Flight Number": fn,
-                        "Aircraft Type": ac,
-                        "Route": rt,
-                        "ETD": etd1,
-                        "ETD Local": eutc.strftime("%H:%M"),
-                        "Conformance Time": conf,
-                        "Load Factor": f"{load}%",
-                        "Load Factor Numeric": load
+                        "Flight Number":fn,
+                        "Aircraft Type":ac,
+                        "Route":rt,
+                        "ETD":etd,
+                        "ETD Local":dt.strftime("%H:%M"),
+                        "Conformance Time":cnf,
+                        "Load Factor":f"{lf}%",
+                        "Load Factor Numeric":lf
                     })
-            except:
-                pass
-        i += 1
-
-    df = pd.DataFrame(flights)
+            except: pass
+        i+=1
+    df=pd.DataFrame(flights)
     if not df.empty:
-        if filter_type == "Flights above 90%":
-            df = df[df["Load Factor Numeric"] >= 90]
-        elif filter_type == "Flights above 70%":
-            df = df[df["Load Factor Numeric"] >= 70]
-        elif filter_type == "Domestic":
-            df = df[df["Route"].isin(DOMESTIC_ROUTES)]
-        df = df.sort_values(by="ETD Local")
+        if filter_type=="Flights above 90%": df=df[df["Load Factor Numeric"]>=90]
+        elif filter_type=="Flights above 70%": df=df[df["Load Factor Numeric"]>=70]
+        elif filter_type=="Domestic": df=df[df["Route"].isin(DOMESTIC_ROUTES)]
+        df=df.sort_values("ETD Local")
     return df
 
-# === Streamlit UI ===
-st.set_page_config(page_title="British Airways MayFly Generator",
-                   page_icon="")
-st.title("BA - Mayfly Generator")
+# === UI Inputs ===
+selected_date = st.date_input("Select MayFly Date", datetime.today(), format="DD/MM/YYYY")
+date_str      = selected_date.strftime("%d %B")
+station       = st.selectbox("Select Station", ["All Stations","T3","T5","LGW"])
+filter_option = st.radio("Choose Filter", ["All Flights","Flights above 90%","Flights above 70%","Domestic"])
 
-# 1. Date selector (UK format)
-selected_date = st.date_input(
-    "Select MayFly Date",
-    datetime.today(),
-    format="DD/MM/YYYY"
-)
-date_str = selected_date.strftime("%d %B")
-
-# 2. Station selector
-station = st.selectbox("Select Station",
-    ["All Stations","T3","T5","LGW"]
-)
-
-# 3. Load/Domestic filter (with 70% option)
-filter_option = st.radio("Choose Filter",
-    ["All Flights","Flights above 90%","Flights above 70%","Domestic"]
-)
-
-st.markdown("### Paste your MayFly data below")
-text_input = st.text_area("Paste content from Ops Dashboard here")
+st.markdown("### Live Flight Data Preview")
+text_input = st.text_area("Paste content from Ops Dashboard here", height=200)
 
 if text_input:
     df = parse_txt(text_input, filter_option)
-
-    # Station filtering
-    if station == "T3":
-        df = df[df["Flight Number"].isin(T3_FLIGHTS)]
-    elif station == "T5":
-        df = df[~df["Flight Number"].isin(T3_FLIGHTS)]
-    elif station == "LGW":
-        df = df[df["Flight Number"].isin(LGW_FLIGHTS)]
+    if station=="T3": df=df[df["Flight Number"].isin(T3_FLIGHTS)]
+    elif station=="T5": df=df[~df["Flight Number"].isin(T3_FLIGHTS)]
+    elif station=="LGW": df=df[df["Flight Number"].isin(LGW_FLIGHTS)]
 
     if not df.empty:
+        st.dataframe(df.drop(columns="Load Factor Numeric"), use_container_width=True)
         st.success(f"Processed {len(df)} flights ({filter_option}, {station}).")
-        pdf = BA_PDF(date_str, orientation='P', unit='mm', format='A4')
-        pdf.set_auto_page_break(auto=True, margin=10)
-        pdf.add_page()
-        pdf.flight_table(df)
-        pdf_output_path = "/tmp/BA_MayFly_Output.pdf"
-        pdf.output(pdf_output_path)
-        with open(pdf_output_path, "rb") as f:
-            st.download_button(
-                label="Download MayFly PDF",
-                data=f,
-                file_name=f"BA_MayFly_{date_str.replace(' ','_')}.pdf",
-                mime="application/pdf"
-            )
+        pdf=BA_PDF(date_str,'P','mm','A4')
+        pdf.set_auto_page_break(True,10); pdf.add_page(); pdf.flight_table(df)
+        tmp="/tmp/BA_MayFly_Output.pdf"; pdf.output(tmp)
+        with open(tmp,"rb") as f:
+            st.download_button("Download MayFly PDF", f,
+                file_name=f"BA_MayFly_{date_str.replace(' ','_')}.pdf")
         st.info("Confidential © 2025 | British Airways")
     else:
         st.error("No valid flights found with current filter.")
