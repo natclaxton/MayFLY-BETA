@@ -71,7 +71,7 @@ st.markdown("""
 col1, col2 = st.columns([1, 6])
 with col1:
     # Ensure R.png sits in the same folder as this script
-    st.image("R.png", width=100, use_container_width=False, caption="British Airways logo")
+    st.image("R.png", width=100, use_container_width=False, caption="")
 with col2:
     st.markdown(
         "<h1 style='color:#3e577d; margin-top:0;'>BA – MAYFLY GENERATOR</h1>",
