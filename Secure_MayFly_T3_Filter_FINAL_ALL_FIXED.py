@@ -10,7 +10,7 @@ import pytz
 def get_hashed_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-CORRECT_PASSWORD_HASH = get_hashed_password("MayFly2025!")
+CORRECT_PASSWORD_HASH = get_hashed_password("BETA")
 
 # === Entrance Page – Welcome & Password ===
 if "authenticated" not in st.session_state:
