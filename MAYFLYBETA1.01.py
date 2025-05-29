@@ -252,7 +252,7 @@ min_hour, max_hour = st.slider(
     help="Show flights departing between these UTC hours"
 )
 
-st.markdown("<h4 style='color:#3e577d;'>LIVE MAYFLY PREVIEW</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='color:#3e577d;'>LIVE MAYFLY PREVIEW - Paste Below</h4>", unsafe_allow_html=True)
 text_input = st.text_area("", height=200)
 
 if text_input:
