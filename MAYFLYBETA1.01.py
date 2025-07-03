@@ -44,63 +44,65 @@ dark_mode = st.checkbox("Enable Dark Mode")
 
 # === Theming CSS ===
 if dark_mode:
-    st.markdown("""
-    <style>
-      .block-container { max-width:800px; margin:auto; }
-      [data-testid="stAppViewContainer"] {
-        background-color: #1a1a1a !important;
-        color: #69c9ff !important;
-        font-family: "Mylus Modern", sans-serif;
-      }
-      .stTextInput label,
-      .stDateInput label,
-      .stSelectbox label,
-      .stRadio label,
-      .stTextArea label {
-        color: #69c9ff !important;
-        text-transform: uppercase;
-        font-family: "Mylus Modern", sans-serif;
-      }
-      .stButton>button {
-        background-color: #327acb !important;
-        color: #FFFFFF !important;
-        text-transform: uppercase;
-        font-family: "Mylus Modern", sans-serif;
-      }
-      h4 {
-        font-size: 16px !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+          .block-container { max-width:800px; margin:auto; }
+          [data-testid="stAppViewContainer"] {
+            background-color: #1a1a1a !important;
+            color: #69c9ff !important;
+            font-family: "Mylus Modern", sans-serif;
+          }
+          .stTextInput label,
+          .stDateInput label,
+          .stSelectbox label,
+          .stRadio label,
+          .stTextArea label {
+            color: #69c9ff !important;
+            text-transform: uppercase;
+            font-family: "Mylus Modern", sans-serif;
+          }
+          .stButton>button {
+            background-color: #327acb !important;
+            color: #FFFFFF !important;
+            text-transform: uppercase;
+            font-family: "Mylus Modern", sans-serif;
+          }
+          h4 {
+            font-size: 16px !important;
+          }
+        </style>
+        """, unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <style>
-      .block-container { max-width:800px; margin:auto; }
-      [data-testid="stAppViewContainer"] {
-        background-color: #FFFFFF !important;
-        color: #3e577d !important;
-        font-family: "Mylus Modern", sans-serif;
-      }
-      .stTextInput label,
-      .stDateInput label,
-      .stSelectbox label,
-      .stRadio label,
-      .stTextArea label {
-        color: #3e577d !important;
-        text-transform: uppercase;
-        font-family: "Mylus Modern", sans-serif;
-      }
-      .stButton>button {
-        background-color: #69c9ff !important;
-        color: #FFFFFF !important;
-        text-transform: uppercase;
-        font-family: "Mylus Modern", sans-serif;
-      }
-      h4 {
-        font-size: 16px !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+          .block-container { max-width:800px; margin:auto; }
+          [data-testid="stAppViewContainer"] {
+            background-color: #FFFFFF !important;
+            color: #3e577d !important;
+            font-family: "Mylus Modern", sans-serif;
+          }
+          .stTextInput label,
+          .stDateInput label,
+          .stSelectbox label,
+          .stRadio label,
+          .stTextArea label {
+            color: #3e577d !important;
+            text-transform: uppercase;
+            font-family: "Mylus Modern", sans-serif;
+          }
+          .stButton>button {
+            background-color: #69c9ff !important;
+            color: #FFFFFF !important;
+            text-transform: uppercase;
+            font-family: "Mylus Modern", sans-serif;
+          }
+          h4 {
+            font-size: 16px !important;
+          }
+        </style>
+        """, unsafe_allow_html=True)
 
 # === Header – Title Only ===
 st.markdown(
@@ -130,6 +132,8 @@ LGW_FLIGHTS = [
     'BA2602','BA2682','BA2662','BA2608','BA2644','BA2650','BA2576','BA2590','BA2722','BA2816',
     'BA2596','BA2656','BA2668','BA2672','BA2572'
 ]
+# Flights operated on short-haul aircraft
+SHORT_HAUL_TYPES = ["320","321","ATR"]
 
 # === PDF Styling ===
 BA_BLUE   = (0, 32, 91)
@@ -168,14 +172,12 @@ class BA_PDF(FPDF):
     def flight_table(self, data):
         headers = ['Flight No','Aircraft','Route','ETD','Conformance','Load']
         widths  = [30,25,30,30,30,20]
-        # header row
         self.set_font('Arial','B',8.5)
         self.set_fill_color(*BA_BLUE)
         self.set_text_color(255,255,255)
         for i,h in enumerate(headers):
             self.cell(widths[i],6,h,1,0,'C',True)
         self.ln()
-        # data rows
         self.set_font('Arial','',7.5)
         self.set_text_color(0)
         for _,row in data.iterrows():
@@ -195,44 +197,42 @@ class BA_PDF(FPDF):
                 self.cell(widths[i],6,str(row[key]),1,0,'C',fill)
             self.ln()
 
-def parse_txt(content, filter_type):
-    lines=content.strip().split('\n')
-    flights=[]; utc=pytz.utc; i=0
-    while i<len(lines):
+def parse_txt(content):
+    lines = content.strip().split('\n')
+    flights = []
+    utc = pytz.utc
+    i = 0
+    while i < len(lines):
         if lines[i].startswith("BA"):
             try:
-                fn=lines[i].strip()
-                ac=lines[i+2].strip()
-                rt=re.sub(r"\s+","",lines[i+3].strip().upper())
-                m1=re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z",lines[i+4])
-                m2=re.search(r"(\d{1,3})%Status",lines[i+8])
+                fn = lines[i].strip()
+                ac = lines[i+2].strip()
+                rt = re.sub(r"\s+","",lines[i+3].strip().upper())
+                m1 = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i+4])
+                m2 = re.search(r"(\d{1,3})%Status", lines[i+8])
                 if m1 and m2:
-                    t,lf=m1.group(1),int(m2.group(1))
-                    dt=datetime.strptime(t,"%H:%M"); dt=utc.localize(dt)
-                    etd=(dt+timedelta(hours=1)).strftime("%H:%M")
-                    cnf=(dt+timedelta(minutes=25)).strftime("%H:%M")
+                    t = m1.group(1)
+                    lf = int(m2.group(1))
+                    dt = datetime.strptime(t, "%H:%M")
+                    dt = utc.localize(dt)
+                    etd = (dt + timedelta(hours=1)).strftime("%H:%M")
+                    cnf = (dt + timedelta(minutes=25)).strftime("%H:%M")
                     flights.append({
-                        "Flight Number":fn,
-                        "Aircraft Type":ac,
-                        "Route":rt,
-                        "ETD":etd,
-                        "ETD Local":dt.strftime("%H:%M"),
-                        "Conformance Time":cnf,
-                        "Load Factor":f"{lf}%",
-                        "Load Factor Numeric":lf
+                        "Flight Number": fn,
+                        "Aircraft Type": ac,
+                        "Route": rt,
+                        "ETD": etd,
+                        "ETD Local": dt.strftime("%H:%M"),
+                        "Conformance Time": cnf,
+                        "Load Factor": f"{lf}%",
+                        "Load Factor Numeric": lf
                     })
             except:
                 pass
-        i+=1
-    df=pd.DataFrame(flights)
+        i += 1
+    df = pd.DataFrame(flights)
     if not df.empty:
-        if filter_type=="Flights above 90%":
-            df=df[df["Load Factor Numeric"]>=90]
-        elif filter_type=="Flights above 70%":
-            df=df[df["Load Factor Numeric"]>=70]
-        elif filter_type=="Domestic":
-            df=df[df["Route"].isin(DOMESTIC_ROUTES)]
-        df=df.sort_values("ETD Local")
+        df = df.sort_values("ETD Local")
     return df
 
 # === UI Inputs ===
@@ -243,8 +243,12 @@ date_str      = selected_date.strftime("%d %B")
 st.markdown("<h4 style='color:#3e577d;'>SELECT STATION</h4>", unsafe_allow_html=True)
 station       = st.selectbox("", ["All Stations","T3","T5","LGW"])
 
-st.markdown("<h4 style='color:#3e577d;'>CHOOSE FILTER</h4>", unsafe_allow_html=True)
-filter_option = st.radio("", ["All Flights","Flights above 90%","Flights above 70%","Domestic"])
+st.markdown("<h4 style='color:#3e577d;'>CHOOSE FILTERS</h4>", unsafe_allow_html=True)
+filter_options = st.multiselect(
+    "",
+    options=["Flights above 90%","Flights above 70%","Domestic","Short Haul"],
+    default=[]
+)
 
 st.markdown("<h4 style='color:#3e577d;'>FILTER BY DEPARTURE HOUR</h4>", unsafe_allow_html=True)
 min_hour, max_hour = st.slider(
@@ -256,30 +260,24 @@ st.markdown("<h4 style='color:#3e577d;'>LIVE MAYFLY PREVIEW - Paste Below</h4>",
 text_input = st.text_area("", height=200)
 
 if text_input:
-    df = parse_txt(text_input, filter_option)
+    df = parse_txt(text_input)
+    # Station filter
     if station=="T3":
-        df=df[df["Flight Number"].isin(T3_FLIGHTS)]
+        df = df[df["Flight Number"].isin(T3_FLIGHTS)]
     elif station=="T5":
-        df=df[~df["Flight Number"].isin(T3_FLIGHTS)]
+        df = df[~df["Flight Number"].isin(T3_FLIGHTS)]
     elif station=="LGW":
-        df=df[df["Flight Number"].isin(LGW_FLIGHTS)]
+        df = df[df["Flight Number"].isin(LGW_FLIGHTS)]
+
+    # Apply selected filters
+    if "Flights above 90%" in filter_options:
+        df = df[df["Load Factor Numeric"] >= 90]
+    if "Flights above 70%" in filter_options:
+        df = df[df["Load Factor Numeric"] >= 70]
+    if "Domestic" in filter_options:
+        df = df[df["Route"].isin(DOMESTIC_ROUTES)]
+    if "Short Haul" in filter_options:
+        df = df[df["Aircraft Type"].isin(SHORT_HAUL_TYPES)]
 
     # apply time‐window
-    df = df[df["ETD Local"].apply(lambda t: min_hour <= int(t.split(":")[0]) <= max_hour)]
-
-    if not df.empty:
-        st.dataframe(df.drop(columns="Load Factor Numeric"), use_container_width=True)
-        st.success(f"Processed {len(df)} flights ({filter_option}, {station}).")
-        with st.spinner("Generating PDF…"):
-            pdf=BA_PDF(date_str,'P','mm','A4')
-            pdf.set_auto_page_break(True,10)
-            pdf.add_page()
-            pdf.flight_table(df)
-            tmp="/tmp/BA_MayFly_Output.pdf"
-            pdf.output(tmp)
-        with open(tmp,"rb") as f:
-            st.download_button("Download MayFly PDF", f,
-                file_name=f"BA_MayFly_{date_str.replace(' ','_')}.pdf")
-        st.info("Confidential © 2025  |  Generated by British Airways")
-    else:
-        st.error("No valid flights found with current filter.")
+    df = df[df["ETD Local"].apply(lambda t: min_hour <= int(t.split(":"`
