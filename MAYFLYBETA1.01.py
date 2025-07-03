@@ -242,7 +242,7 @@ station       = st.selectbox("", ["All Stations","T3","T5","LGW"])
 st.markdown("<h4 style='color:#3e577d;'>CHOOSE FILTERS</h4>", unsafe_allow_html=True)
 filter_options = st.multiselect(
     "",
-    options=["Flights above 90%","Flights above 70%","Domestic","Short Haul"],
+    options=["All Flights","Flights above 90%","Flights above 70%","Domestic","Short Haul"],
     default=[]
 )
 
@@ -267,14 +267,15 @@ if text_input:
         df = df[df["Flight Number"].isin(LGW_FLIGHTS)]
 
     # Apply selected filters
-    if "Flights above 90%" in filter_options:
-        df = df[df["Load Factor Numeric"] >= 90]
-    if "Flights above 70%" in filter_options:
-        df = df[df["Load Factor Numeric"] >= 70]
-    if "Domestic" in filter_options:
-        df = df[df["Route"].isin(DOMESTIC_ROUTES)]
-    if "Short Haul" in filter_options:
-        df = df[df["Aircraft Type"].isin(SHORT_HAUL_TYPES)]
+    if "All Flights" not in filter_options:
+        if "Flights above 90%" in filter_options:
+            df = df[df["Load Factor Numeric"] >= 90]
+        if "Flights above 70%" in filter_options:
+            df = df[df["Load Factor Numeric"] >= 70]
+        if "Domestic" in filter_options:
+            df = df[df["Route"].isin(DOMESTIC_ROUTES)]
+        if "Short Haul" in filter_options:
+            df = df[df["Aircraft Type"].isin(SHORT_HAUL_TYPES)]
 
     # Apply time‐window
     df = df[df["ETD Local"].apply(lambda t: min_hour <= int(t.split(":")[0]) <= max_hour)]
