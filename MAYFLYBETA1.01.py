@@ -119,14 +119,15 @@ T3_FLIGHTS = [
     "BA870","BA872","BA874","BA882","BA884","BA886","BA892","BA896","BA918","BA920","BA820"
 ]
 LGW_FLIGHTS = [
-    "BA2640","BA2704","BA2670","BA2740","BA2624","BA2748","BA2676","BA2758","BA2784","BA2610",
-    "BA2606","BA2574","BA2810","BA2666","BA2614","BA2716","BA2808","BA2660","BA2680","BA2720",
-    "BA2642","BA2520","BA2161","BA2037","BA2754","BA2239","BA1480","BA2159","BA2167","BA2780",
-    "BA2203","BA2702","BA2756","BA2263","BA2612","BA2794","BA2039","BA2812","BA2752","BA2273",
-    "BA2602","BA2682","BA2662","BA2608","BA2644","BA2650","BA2576","BA2590","BA2722","BA2816",
-    "BA2596","BA2656","BA2668","BA2672","BA2572"
+    'BA2640','BA2704','BA2670','BA2740','BA2624','BA2748','BA2676','BA2758','BA2784','BA2610',
+    'BA2606','BA2574','BA2810','BA2666','BA2614','BA2716','BA2808','BA2660','BA2680','BA2720',
+    'BA2642','BA2520','BA2161','BA2037','BA2754','BA2239','BA1480','BA2159','BA2167','BA2780',
+    'BA2203','BA2702','BA2756','BA2263','BA2612','BA2794','BA2039','BA2812','BA2752','BA2273',
+    'BA2602','BA2682','BA2662','BA2608','BA2644','BA2650','BA2576','BA2590','BA2722','BA2816',
+    'BA2596','BA2656','BA2668','BA2672','BA2572'
 ]
-SHORT_HAUL_TYPES = ["320","321","ATR"]
+# Define short-haul by aircraft types
+SHORT_HAUL_TYPES = ["320","32N","32Q","319","32A"]
 
 # === PDF Styling ===
 BA_BLUE   = (0, 32, 91)
@@ -165,14 +166,14 @@ class BA_PDF(FPDF):
     def flight_table(self, data):
         headers = ['Flight No','Aircraft','Route','ETD','Conformance','Load']
         widths  = [30,25,30,30,30,20]
-        # header
+        # header row
         self.set_font('Arial','B',8.5)
         self.set_fill_color(*BA_BLUE)
         self.set_text_color(255,255,255)
         for i,h in enumerate(headers):
             self.cell(widths[i],6,h,1,0,'C',True)
         self.ln()
-        # rows
+        # data rows
         self.set_font('Arial','',7.5)
         self.set_text_color(0)
         for _,row in data.iterrows():
