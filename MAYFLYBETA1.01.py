@@ -5,10 +5,6 @@ from datetime import datetime, timedelta, time
 from fpdf import FPDF
 import hashlib
 import pytz
-from streamlit_autorefresh import st_autorefresh
-
-# === Dev: auto‐refresh every second for countdown timer ===
-st_autorefresh(interval=1000, limit=None, key="timer")
 
 # === Secure Password Hashing ===
 def get_hashed_password(password):
@@ -49,7 +45,10 @@ else:
     st.markdown("""<style>/* light mode CSS here */</style>""", unsafe_allow_html=True)
 
 # === Header ===
-st.markdown("<h1 style='text-align:center; color:#3e577d; margin-bottom:0;'>BA – MAYFLY GENERATOR</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<h1 style='text-align:center; color:#3e577d; margin-bottom:0;'>BA – MAYFLY GENERATOR</h1>",
+    unsafe_allow_html=True
+)
 st.markdown("---")
 
 # === Flight Lists & Definitions ===
@@ -91,7 +90,10 @@ class BA_PDF(FPDF):
         self.ln(5)
         self.set_font('Arial','I',8)
         self.set_text_color(0)
-        self.multi_cell(0,5,"Please note, Conformance times below are for landside only. For connections, add 5 minutes.", align='C')
+        self.multi_cell(0,5,
+            "Please note, Conformance times below are for landside only. For connections, add 5 minutes.",
+            align='C'
+        )
         self.ln(3)
 
     def footer(self):
@@ -136,15 +138,13 @@ def parse_txt(content):
                 if m1 and m2:
                     t, lf = m1.group(1), int(m2.group(1))
                     dt = utc.localize(datetime.strptime(t, "%H:%M"))
-                    etd = (dt + timedelta(hours=1)).strftime("%H:%M")
-                    cnf = (dt + timedelta(minutes=25)).strftime("%H:%M")
                     flights.append({
                         "Flight Number": fn,
                         "Aircraft Type": ac,
                         "Route": rt,
-                        "ETD": etd,
+                        "ETD": (dt + timedelta(hours=1)).strftime("%H:%M"),
                         "ETD Local": dt.strftime("%H:%M"),
-                        "Conformance Time": cnf,
+                        "Conformance Time": (dt + timedelta(minutes=25)).strftime("%H:%M"),
                         "Load Factor": f"{lf}%",
                         "Load Factor Numeric": lf
                     })
@@ -163,7 +163,9 @@ st.markdown("<h4 style='color:#3e577d;'>SELECT STATION</h4>", unsafe_allow_html=
 station = st.selectbox("", ["All Stations","T3","T5","LGW"])
 
 st.markdown("<h4 style='color:#3e577d;'>CHOOSE FILTERS</h4>", unsafe_allow_html=True)
-filter_options = st.multiselect("", options=["All Flights","Flights above 90%","Flights above 70%","Domestic","Short Haul"], default=["All Flights"])
+filter_options = st.multiselect(
+    "", options=["All Flights","Flights above 90%","Flights above 70%","Domestic","Short Haul"], default=["All Flights"]
+)
 
 st.markdown("<h4 style='color:#3e577d;'>FILTER BY DEPARTURE HOUR</h4>", unsafe_allow_html=True)
 min_h, max_h = st.slider("", 0, 23, (0, 23), help="Show flights departing between these UTC hours")
