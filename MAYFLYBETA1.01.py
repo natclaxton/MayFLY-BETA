@@ -54,7 +54,7 @@ st.markdown("---")
 # === Flight Lists & Definitions ===
 DOMESTIC_ROUTES = ["LHRABZ","LHRINV","LHRGLA","LHREDI","LHRBHD",
                    "LHRNCL","LHRJER","LHRMAN","LHRBFS","LHRDUB"]
-T3_FLIGHTS = [  # BA820 removed
+T3_FLIGHTS = [
     "BA159","BA227","BA247","BA253","BA289","BA336","BA340","BA350","BA366",
     "BA368","BA370","BA372","BA374","BA376","BA378","BA380","BA382","BA386",
     "BA408","BA416","BA418","BA422","BA490","BA492","BA498","BA532","BA608",
