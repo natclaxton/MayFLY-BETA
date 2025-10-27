@@ -160,13 +160,13 @@ def parse_txt(content):
                 m2 = re.search(r"(\d{1,3})%Status", lines[i+8])
                 if m1 and m2:
                     t, lf = m1.group(1), int(m2.group(1))
-                    dt = utc.localize(datetime.strptime(t, "%H:%M"))
+                    dt = utc.localize(datetime.strptime(t, "%H:%M"))  # UTC time
                     flights.append({
                         "Flight Number": fn,
                         "Aircraft Type": ac,
                         "Route": rt,
-                        "ETD": (dt + timedelta(hours=1)).strftime("%H:%M"),
-                        "ETD Local": dt.strftime("%H:%M"),
+                        "ETD": dt.strftime("%H:%M"),                 # UTC
+                        "ETD Local": dt.strftime("%H:%M"),            # kept for filter; also UTC
                         "Conformance Time": (dt + timedelta(minutes=25)).strftime("%H:%M"),
                         "Load Factor": f"{lf}%",
                         "Load Factor Numeric": lf
@@ -201,7 +201,7 @@ min_h, max_h = st.slider("", 0, 23, (0, 23), help="Show flights departing betwee
 st.markdown("<h4 style='color:#3e577d;'>LIVE MAYFLY PREVIEW - Paste Below</h4>", unsafe_allow_html=True)
 text_input = st.text_area("", height=200)
 
-# === Countdown to next refresh at 00:00 UTC & 12:00 UTC ===
+# === Countdown to next refresh at 00:00 UTC & 12:00 UTC (UTC-only display) ===
 now = datetime.now(pytz.utc)
 today = now.date()
 times = [
@@ -213,8 +213,7 @@ next_time = min(t for t in times if t > now)
 secs = int((next_time - now).total_seconds())
 h, r = divmod(secs, 3600)
 m, s = divmod(r, 60)
-bst_time = next_time + timedelta(hours=1)
-st.markdown(f"**Next refresh: {next_time.strftime('%H:%M')} UTC / {bst_time.strftime('%H:%M')} BST in {h:02d}:{m:02d}:{s:02d}**")
+st.markdown(f"**Next refresh: {next_time.strftime('%H:%M')} UTC in {h:02d}:{m:02d}:{s:02d}**")
 st.markdown("[OpsDashboard](https://opsdashboard.baplc.com/#/search)")
 
 if text_input:
@@ -239,7 +238,7 @@ if text_input:
         if "Short Haul" in filter_options:
             df = df[df["Aircraft Type"].isin(SHORT_HAUL_TYPES)]
 
-    # Time window
+    # Time window (UTC hours)
     df = df[df["ETD Local"].apply(lambda t: min_h <= int(t.split(":")[0]) <= max_h)]
 
     if not df.empty:
