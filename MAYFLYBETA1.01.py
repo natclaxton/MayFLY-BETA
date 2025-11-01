@@ -198,10 +198,10 @@ def build_short_filename(selected_date, filter_options) -> str:
     else:
         order = ["Flights above 90%", "Flights above 70%", "Domestic", "Short Haul"]
         tag = {
-            "Flights above 90%": "LF90",
-            "Flights above 70%": "LF70",
+            "Flights above 90%": "LF90+",
+            "Flights above 70%": "LF70+",
             "Domestic": "DOMESTIC",
-            "Short Haul": "SHORT"
+            "Short Haul": "SHORT HAUL"
         }
         chosen = [tag[o] for o in order if o in filter_options]
         filt = "_".join(chosen) if chosen else "FILTER"
