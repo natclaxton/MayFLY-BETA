@@ -268,7 +268,7 @@ selected_types = st.multiselect(
     default=[]
 )
 neo_only = st.checkbox(
-    "Show NEO aircraft only (by registration GXXX/G-XXX)",
+    "Show NEO aircraft only",
     value=False,
     help="Matches registrations beginning GNE*, GTN*, or GTS*."
 )
