@@ -86,18 +86,17 @@ LGW_FLIGHTS = [
 
 SHORT_HAUL_TYPES = ["320", "32N", "32Q", "319", "32A"]
 
-# --- Registration helpers + NEO list (raw feed shows GXXX) ---
+# --- Registration helpers + NEO identification ---
 def _norm_reg(s: str) -> str:
     """Uppercase, strip spaces, and remove hyphens so GEUXC == G-EUXC."""
     return (s or "").upper().replace("-", "").strip()
 
-# From your sheet photo: A320-neo and A321-neo suffixes (the bit after 'G-')
-NEO_SUFFIXES_A320 = [
-    "TNM","TNN","TNO","TNP","TNR","TNS","TNT","TNU","TNV","TNW",
-    "TNX","TNY","TNZ","TSA","TSB","TSC","TSD","TSE","TSF","TSG","TSH"
-]
-NEO_SUFFIXES_A321 = ["NEA","NEB","NEC","NED","NEE","NEF","NEG","NEH","NEI","NEJ"]
-NEO_REG_SET = { f"G{suffix}" for suffix in (NEO_SUFFIXES_A320 + NEO_SUFFIXES_A321) }
+# Match BA NEOs by registration PREFIX (feed looks like GNEOV / GTNM / GTSH)
+NEO_PREFIXES = ["GNE", "GTN", "GTS"]
+
+def is_neo_reg(reg: str) -> bool:
+    r = _norm_reg(reg)
+    return any(r.startswith(pfx) for pfx in NEO_PREFIXES)
 
 # === PDF Styling ===
 BA_BLUE = (0, 32, 91)
@@ -271,7 +270,7 @@ selected_types = st.multiselect(
 neo_only = st.checkbox(
     "Show NEO aircraft only (by registration GXXX/G-XXX)",
     value=False,
-    help="Matches exact NEO registrations (e.g., GTNM, GNEA)."
+    help="Matches registrations beginning GNE*, GTN*, or GTS*."
 )
 
 st.markdown("<h4 style='color:#3e577d;'>FILTER BY DEPARTURE HOUR</h4>", unsafe_allow_html=True)
@@ -322,13 +321,13 @@ if text_input:
     if selected_types:
         df = df[df["Aircraft Type"].isin(selected_types)]
 
-    # NEW: NEO filter (registration-based only)
+    # NEW: NEO filter (registration-based by prefix)
     if neo_only:
-        df = df[df["Registration"].apply(_norm_reg).isin(NEO_REG_SET)]
+        df = df[df["Registration"].apply(is_neo_reg)]
         st.caption(f"NEO matches: {df['Registration'].nunique()} aircraft | {len(df)} flights")
 
     # Time window (UTC hours)
-    df = df[df["ETD Local"].apply(lambda t: min_h <= int(t.split(":")[0]) <= max_h)]
+    df = df[df["ETD Local"].apply(lambda t: min_h <= int(t.split(':')[0]) <= max_h)]
 
     if not df.empty:
         # --- Safe preview dataframe for Streamlit (avoid Arrow LargeUtf8) ---
