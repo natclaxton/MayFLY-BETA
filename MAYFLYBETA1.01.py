@@ -86,6 +86,19 @@ LGW_FLIGHTS = [
 
 SHORT_HAUL_TYPES = ["320", "32N", "32Q", "319", "32A"]
 
+# --- Registration helpers + NEO list (raw feed shows GXXX) ---
+def _norm_reg(s: str) -> str:
+    """Uppercase, strip spaces, and remove hyphens so GEUXC == G-EUXC."""
+    return (s or "").upper().replace("-", "").strip()
+
+# From your sheet photo: A320-neo and A321-neo suffixes (the bit after 'G-')
+NEO_SUFFIXES_A320 = [
+    "TNM","TNN","TNO","TNP","TNR","TNS","TNT","TNU","TNV","TNW",
+    "TNX","TNY","TNZ","TSA","TSB","TSC","TSD","TSE","TSF","TSG","TSH"
+]
+NEO_SUFFIXES_A321 = ["NEA","NEB","NEC","NED","NEE","NEF","NEG","NEH","NEI","NEJ"]
+NEO_REG_SET = { f"G{suffix}" for suffix in (NEO_SUFFIXES_A320 + NEO_SUFFIXES_A321) }
+
 # === PDF Styling ===
 BA_BLUE = (0, 32, 91)
 GREEN = (198, 239, 206)
@@ -154,15 +167,11 @@ class BA_PDF(FPDF):
                 if key == "Load Factor":
                     lf = int(str(row["Load Factor"]).rstrip("%"))
                     if lf < 70:
-                        self.set_fill_color(*GREEN)
-                        fill = True
+                        self.set_fill_color(*GREEN); fill = True
                     elif lf <= 90:
-                        self.set_fill_color(*AMBER)
-                        fill = True
+                        self.set_fill_color(*AMBER); fill = True
                     else:
-                        self.set_fill_color(*LIGHT_RED)
-                        fill = True
-
+                        self.set_fill_color(*LIGHT_RED); fill = True
                 self.cell(w, 6, str(row[key]), 1, 0, "C", fill)
             self.ln()
 
@@ -175,8 +184,9 @@ def parse_txt(content: str) -> pd.DataFrame:
     while i < len(lines):
         if lines[i].startswith("BA"):
             try:
-                fn = lines[i].strip()
-                ac = lines[i + 2].strip()
+                fn = lines[i].strip()               # Flight Number
+                reg = lines[i + 1].strip()          # Registration (no hyphen in feed, e.g., GEUXC/GNEA)
+                ac = lines[i + 2].strip()           # Aircraft Type
                 rt = re.sub(r"\s+", "", lines[i + 3].strip().upper())
                 m1 = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i + 4])
                 m2 = re.search(r"(\d{1,3})%Status", lines[i + 8])
@@ -188,6 +198,7 @@ def parse_txt(content: str) -> pd.DataFrame:
                     flights.append(
                         {
                             "Flight Number": fn,
+                            "Registration": reg,       # keep for NEO filtering
                             "Aircraft Type": ac,
                             "Route": rt,
                             "ETD": dt.strftime("%H:%M"),
@@ -207,7 +218,14 @@ def parse_txt(content: str) -> pd.DataFrame:
         i += 1
 
     df = pd.DataFrame(flights)
-    return df.sort_values("ETD Local") if not df.empty else df
+    if not df.empty:
+        # Safety net: drop exact dupes on number + times
+        df = df.drop_duplicates(
+            subset=["Flight Number", "ETD Local", "Conformance Time"],
+            keep="first"
+        )
+        df = df.sort_values("ETD Local")
+    return df
 
 # === Short filename helper ===
 def build_short_filename(selected_date, filter_options) -> str:
@@ -243,6 +261,19 @@ filter_options = st.multiselect(
     default=["All Flights"],
 )
 
+# --- NEW: Aircraft filters (type + NEO by registration) ---
+KNOWN_TYPES = ["318","319","320","32A","32N","32Q","321","ATR","777","787"]
+selected_types = st.multiselect(
+    "Filter by Aircraft Type (optional)",
+    options=KNOWN_TYPES,
+    default=[]
+)
+neo_only = st.checkbox(
+    "Show NEO aircraft only (by registration GXXX/G-XXX)",
+    value=False,
+    help="Matches exact NEO registrations (e.g., GTNM, GNEA)."
+)
+
 st.markdown("<h4 style='color:#3e577d;'>FILTER BY DEPARTURE HOUR</h4>", unsafe_allow_html=True)
 min_h, max_h = st.slider("", 0, 23, (0, 23), help="Show flights departing between these UTC hours")
 
@@ -276,7 +307,7 @@ if text_input:
     elif station == "LGW":
         df = df[df["Flight Number"].isin(LGW_FLIGHTS)]
 
-    # Apply filters
+    # Apply core filters
     if "All Flights" not in filter_options:
         if "Flights above 90%" in filter_options:
             df = df[df["Load Factor Numeric"] >= 90]
@@ -286,6 +317,15 @@ if text_input:
             df = df[df["Route"].isin(DOMESTIC_ROUTES)]
         if "Short Haul" in filter_options:
             df = df[df["Aircraft Type"].isin(SHORT_HAUL_TYPES)]
+
+    # NEW: Aircraft Type filter (explicit)
+    if selected_types:
+        df = df[df["Aircraft Type"].isin(selected_types)]
+
+    # NEW: NEO filter (registration-based only)
+    if neo_only:
+        df = df[df["Registration"].apply(_norm_reg).isin(NEO_REG_SET)]
+        st.caption(f"NEO matches: {df['Registration'].nunique()} aircraft | {len(df)} flights")
 
     # Time window (UTC hours)
     df = df[df["ETD Local"].apply(lambda t: min_h <= int(t.split(":")[0]) <= max_h)]
@@ -298,7 +338,7 @@ if text_input:
 
         st.dataframe(preview_df, use_container_width=True)
 
-        st.success(f"Processed {len(df)} flights ({station}, filters: {filter_options}).")
+        st.success(f"Processed {len(df)} flights ({station}, filters: {filter_options}, types: {selected_types or 'any'}, NEO: {'on' if neo_only else 'off'}).")
 
         with st.spinner("Generating PDF…"):
             pdf = BA_PDF(date_str, "P", "mm", "A4")
