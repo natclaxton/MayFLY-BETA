@@ -1,596 +1,298 @@
 import streamlit as st
-
 import pandas as pd
-
 import re
-
 from datetime import datetime, timedelta, time
-
 from fpdf import FPDF
-
 import hashlib
-
 import pytz
-
 LONDON = pytz.timezone("Europe/London")
-
 # === Page Config (MUST be first Streamlit command) ===
-
 st.set_page_config(page_title="BA – MayFly Generator", page_icon="✈️", layout="centered")
-
 # === Secure Password Hashing ===
-
 def get_hashed_password(password: str) -> str:
-
     return hashlib.sha256(password.encode()).hexdigest()
-
 CORRECT_PASSWORD_HASH = get_hashed_password("MayFly2025!")
-
 # === Entrance Page – Welcome & Password ===
-
 if "authenticated" not in st.session_state:
-
     st.session_state.authenticated = False
-
 def login_page():
-
     st.markdown(
-
         "<h1 style='text-align:center; color:#3e577d;'>WELCOME TO THE MAYFLY GENERATOR</h1>",
-
         unsafe_allow_html=True
-
     )
-
     pwd = st.text_input("ENTER PASSWORD", type="password", key="login_pwd")
-
     if st.button("SUBMIT"):
-
         if get_hashed_password(pwd) == CORRECT_PASSWORD_HASH:
-
             st.session_state.authenticated = True
-
         else:
-
             st.error("❌ PASSWORD INCORRECT. TRY AGAIN.")
-
 if not st.session_state.authenticated:
-
     login_page()
-
     st.stop()
-
 # === Dark Mode Toggle ===
-
 dark_mode = st.checkbox("Enable Dark Mode")
-
 # === Theming CSS ===
-
 if dark_mode:
-
     st.markdown("""<style>/* dark mode CSS here */</style>""", unsafe_allow_html=True)
-
 else:
-
     st.markdown("""<style>/* light mode CSS here */</style>""", unsafe_allow_html=True)
-
 # === Header ===
-
 st.markdown(
-
     "<h1 style='text-align:center; color:#3e577d; margin-bottom:0;'>BA – MAYFLY GENERATOR</h1>",
-
     unsafe_allow_html=True
-
 )
-
 st.markdown("---")
-
 # === Flight Lists & Definitions ===
-
 DOMESTIC_ROUTES = [
-
     "LHRABZ", "LHRINV", "LHRGLA", "LHREDI", "LHRBHD",
-
     "LHRNCL", "LHRJER", "LHRMAN", "LHRBFS", "LHRDUB"
-
 ]
-
 # T3 list updated (moved to T5: BA806, BA380, BA422, BA340, BA289, BA762, BA848, BA918, BA764, BA193, BA125, BA191, BA193, BA770, BA704, BA616, BA618, BA706, BA694, BA772, BA774, BA336, BA378, BA998)
-
 T3_FLIGHTS = [
-
-    "227", "159", "219", "223", "247", "253", "255", "289", "346", "348", "350", "352", "354", "358", "366", "368", "370", "374", "406", "408", "414", "416", "418", "462", "490", "518", "532", "592", "594", "620", "624", "67", "682", "722", "724", "726", "728", "768", "780", "782", "784", "786", "788", "790", "792", "794", "848", "850", "852", "854", "856", "858", "860", "862", "864", "866", "868", "870", "872", "874", "876", "878", "886", "888", "892", "894"
-
+    "BA227", "BA159", "BA219", "BA223", "BA247", "BA253", "BA255", "BA289", "BA346", "BA348", "BA350", "BA352", "BA354", "BA358", "BA366", "BA368", "BA370", "BA374", "BA406", "BA408", "BA414", "BA416", "BA418", "BA462", "BA490", "BA518", "BA532", "BA592", "BA594", "BA620", "BA624", "BA067", "BA682", "BA722", "BA724", "BA726", "BA728", "BA768", "BA780", "BA782", "BA784", "BA786", "BA788", "BA790", "BA792", "BA794", "BA848", "BA850", "BA852", "BA854", "BA856", "BA858", "BA860", "BA862", "BA864", "BA866", "BA868", "BA870", "BA872", "BA874", "BA876", "BA878", "BA886", "BA888", "BA892", "BA894"
 ]
-
 LGW_FLIGHTS = [
-
     "BA2640", "BA2704", "BA2670", "BA2740", "BA2624", "BA2748", "BA2676", "BA2758", "BA2784",
-
     "BA2610", "BA2606", "BA2574", "BA2810", "BA2666", "BA2614", "BA2716", "BA2808", "BA2660",
-
     "BA2680", "BA2720", "BA2642", "BA2520", "BA2161", "BA2037", "BA2754", "BA2239", "BA1480",
-
     "BA2159", "BA2167", "BA2780", "BA2203", "BA2702", "BA2756", "BA2263", "BA2612", "BA2794",
-
     "BA2039", "BA2812", "BA2752", "BA2273", "BA2602", "BA2682", "BA2662", "BA2608", "BA2644",
-
     "BA2650", "BA2576", "BA2590", "BA2722", "BA2816", "BA2596", "BA2656", "BA2668", "BA2672", "BA2572"
-
 ]
-
 SHORT_HAUL_TYPES = ["320", "32N", "32Q", "319", "32A"]
-
 # --- Registration helpers + NEO identification ---
-
 def _norm_reg(s: str) -> str:
-
     """Uppercase, strip spaces, and remove hyphens so GEUXC == G-EUXC."""
-
     return (s or "").upper().replace("-", "").strip()
-
 # Match BA NEOs by registration PREFIX (feed looks like GNEOV / GTNM / GTSH)
-
 NEO_PREFIXES = ["GNE", "GTN", "GTS"]
-
 def is_neo_reg(reg: str) -> bool:
-
     r = _norm_reg(reg)
-
     return any(r.startswith(pfx) for pfx in NEO_PREFIXES)
-
 # === PDF Styling ===
-
 BA_BLUE = (0, 32, 91)
-
 GREEN = (198, 239, 206)
-
 AMBER = (255, 229, 153)
-
 LIGHT_RED = (255, 204, 204)
-
 class BA_PDF(FPDF):
-
     def __init__(self, date_str, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
-
         self.date_str = date_str
-
     def header(self):
-
         self.set_fill_color(*BA_BLUE)
-
         self.set_text_color(255, 255, 255)
-
         self.set_font("Arial", "B", 14)
-
         self.cell(0, 10, f"MayFly {self.date_str} - British Airways", ln=True, align="C", fill=True)
-
         self.ln(5)
-
         self.set_font("Arial", "I", 8)
-
         self.set_text_color(0)
-
         self.multi_cell(
-
             0,
-
             5,
-
             "Please note, Conformance times below are for landside only. For connections, add 4 minutes.",
-
             align="C",
-
         )
-
         self.ln(3)
-
     def footer(self):
-
         self.set_y(-25)
-
         self.set_font("Arial", "I", 6)
-
         self.set_text_color(0)
-
         self.multi_cell(
-
             0,
-
             5,
-
             "if customers flight is delayed please cross check with JFE/FLY to ensure the customer is within the conformance time",
-
             align="C",
-
         )
-
         self.set_y(-12)
-
         self.set_font("Arial", "I", 8)
-
         self.set_text_color(100)
-
         self.cell(0, 8, "Confidential © 2025 | Generated by British Airways", 0, 0, "C")
-
     def flight_table(self, data: pd.DataFrame):
-
         headers = ["Flight No", "Aircraft", "Route", "STD", "Conformance", "LF"]
-
         widths = [30, 25, 30, 30, 30, 20]
-
         self.set_font("Arial", "B", 8.5)
-
         self.set_fill_color(*BA_BLUE)
-
         self.set_text_color(255, 255, 255)
-
         for w, h in zip(widths, headers):
-
             self.cell(w, 6, h, 1, 0, "C", True)
-
         self.ln()
-
         self.set_font("Arial", "", 7.5)
-
         self.set_text_color(0)
-
         for _, row in data.iterrows():
-
             for w, key in zip(
-
                 widths,
-
                 ["Flight Number", "Aircraft Type", "Route", "ETD", "Conformance Time", "Load Factor"],
-
             ):
-
                 fill = False
-
                 if key == "Load Factor":
-
                     lf = int(str(row["Load Factor"]).rstrip("%"))
-
                     if lf < 70:
-
                         self.set_fill_color(*GREEN)
-
                         fill = True
-
                     elif lf <= 90:
-
                         self.set_fill_color(*AMBER)
-
                         fill = True
-
                     else:
-
                         self.set_fill_color(*LIGHT_RED)
-
                         fill = True
-
                 self.cell(w, 6, str(row[key]), 1, 0, "C", fill)
-
             self.ln()
-
 def parse_txt(content: str, selected_date) -> pd.DataFrame:
-
     lines = content.strip().split("\n")
-
     flights = []
-
     utc = pytz.utc
-
     i = 0
-
     while i < len(lines):
-
         if lines[i].startswith("BA"):
-
             try:
-
                 fn = lines[i].strip()
-
                 reg = lines[i + 1].strip()
-
                 ac = lines[i + 2].strip()
-
                 rt = re.sub(r"\s+", "", lines[i + 3].strip().upper())
-
                 m1 = re.search(r"STD: \d{2} \w+ - (\d{2}:\d{2})z", lines[i + 4])
-
                 m2 = re.search(r"(\d{1,3})%Status", lines[i + 8])
-
                 if m1 and m2:
-
                     t, lf = m1.group(1), int(m2.group(1))
-
                     flight_time = datetime.strptime(t, "%H:%M").time()
-
                     dt_utc = utc.localize(datetime.combine(selected_date, flight_time))
-
                     dt_local = dt_utc.astimezone(LONDON)
-
                     conf_local = (dt_utc - timedelta(minutes=35)).astimezone(LONDON)
-
                     flights.append(
-
                         {
-
                             "Flight Number": fn,
-
                             "Registration": reg,
-
                             "Aircraft Type": ac,
-
                             "Route": rt,
-
                             "ETD": dt_local.strftime("%H:%M"),
-
                             "ETD Local": dt_local.strftime("%H:%M"),
-
                             "Conformance Time": conf_local.strftime("%H:%M"),
-
                             "Load Factor": f"{lf}%",
-
                             "Load Factor Numeric": lf,
-
                         }
-
                     )
-
                     i += 9
-
                     continue
-
             except Exception:
-
                 pass
-
         i += 1
-
     df = pd.DataFrame(flights)
-
     if not df.empty:
-
         df = df.drop_duplicates(
-
             subset=["Flight Number", "ETD Local", "Conformance Time"],
-
             keep="first"
-
         )
-
         df = df.sort_values("ETD Local")
-
     return df
-
 # === Short filename helper ===
-
 def build_short_filename(selected_date, filter_options) -> str:
-
     date_label = selected_date.strftime("%d%b").upper()
-
     if "All Flights" in filter_options:
-
         filt = "ALL"
-
     else:
-
         order = ["Flights above 90%", "Flights above 70%", "Domestic", "Short Haul"]
-
         tag = {
-
             "Flights above 90%": "LF90+",
-
             "Flights above 70%": "LF70+",
-
             "Domestic": "DOMESTIC",
-
             "Short Haul": "SHORT HAUL",
-
         }
-
         chosen = [tag[o] for o in order if o in filter_options]
-
         filt = "_".join(chosen) if chosen else "FILTER"
-
     return f"BA_MAYFLY_{date_label}_{filt}.pdf"
-
 # === UI Inputs ===
-
 st.markdown("<h4 style='color:#3e577d;'>SELECT MAYFLY DATE</h4>", unsafe_allow_html=True)
-
 selected_date = st.date_input("", datetime.today().date())
-
 date_str = selected_date.strftime("%d %B")
-
 st.markdown("<h4 style='color:#3e577d;'>SELECT STATION</h4>", unsafe_allow_html=True)
-
 station = st.selectbox("", ["All Stations", "T3", "T5", "LGW"])
-
 st.markdown("<h4 style='color:#3e577d;'>CHOOSE FILTERS</h4>", unsafe_allow_html=True)
-
 filter_options = st.multiselect(
-
     "",
-
     options=["All Flights", "Flights above 90%", "Flights above 70%", "Domestic", "Short Haul"],
-
     default=["All Flights"],
-
 )
-
 KNOWN_TYPES = ["318", "319", "320", "32A", "32N", "32Q", "321", "ATR", "777", "787"]
-
 selected_types = st.multiselect(
-
     "Filter by Aircraft Type (optional)",
-
     options=KNOWN_TYPES,
-
     default=[]
-
 )
-
 neo_only = st.checkbox(
-
     "Show NEO aircraft only",
-
     value=False,
-
     help="Matches registrations beginning GNE*, GTN*, or GTS*."
-
 )
-
 st.markdown("<h4 style='color:#3e577d;'>FILTER BY DEPARTURE HOUR</h4>", unsafe_allow_html=True)
-
 min_h, max_h = st.slider("", 0, 23, (0, 23), help="Show flights departing between these UK local hours")
-
 st.markdown("<h4 style='color:#3e577d;'>LIVE MAYFLY PREVIEW - Paste Below</h4>", unsafe_allow_html=True)
-
 text_input = st.text_area("", height=200)
-
 # === Countdown to next refresh at 00:00 UTC & 12:00 UTC, displayed in UK local time ===
-
 now = datetime.now(pytz.utc)
-
 today = now.date()
-
 times = [
-
     datetime.combine(today, time(0, 0), tzinfo=pytz.utc),
-
     datetime.combine(today, time(12, 0), tzinfo=pytz.utc),
-
     datetime.combine(today + timedelta(days=1), time(0, 0), tzinfo=pytz.utc),
-
 ]
-
 next_time = min(t for t in times if t > now)
-
 next_time_local = next_time.astimezone(LONDON)
-
 secs = int((next_time - now).total_seconds())
-
 h, r = divmod(secs, 3600)
-
 m, s = divmod(r, 60)
-
 st.markdown(
-
     f"**Next refresh: {next_time_local.strftime('%H:%M')} {next_time_local.tzname()} in {h:02d}:{m:02d}:{s:02d}**"
-
 )
-
 st.markdown("[OpsDashboard](https://opsdashboard.baplc.com/#/search)")
-
 if text_input:
-
     df = parse_txt(text_input, selected_date)
-
     # Station filter
-
     if station == "T3":
-
         df = df[df["Flight Number"].isin(T3_FLIGHTS)]
-
     elif station == "T5":
-
         df = df[~df["Flight Number"].isin(T3_FLIGHTS)]
-
     elif station == "LGW":
-
         df = df[df["Flight Number"].isin(LGW_FLIGHTS)]
-
     # Apply core filters
-
     if "All Flights" not in filter_options:
-
         if "Flights above 90%" in filter_options:
-
             df = df[df["Load Factor Numeric"] >= 90]
-
         if "Flights above 70%" in filter_options:
-
             df = df[df["Load Factor Numeric"] >= 70]
-
         if "Domestic" in filter_options:
-
             df = df[df["Route"].isin(DOMESTIC_ROUTES)]
-
         if "Short Haul" in filter_options:
-
             df = df[df["Aircraft Type"].isin(SHORT_HAUL_TYPES)]
-
     # Aircraft Type filter
-
     if selected_types:
-
         df = df[df["Aircraft Type"].isin(selected_types)]
-
     # NEO filter
-
     if neo_only:
-
         df = df[df["Registration"].apply(is_neo_reg)]
-
         st.caption(f"NEO matches: {df['Registration'].nunique()} aircraft | {len(df)} flights")
-
     # Time window (UK local hours)
-
     df = df[df["ETD Local"].apply(lambda t: min_h <= int(t.split(':')[0]) <= max_h)]
-
     if not df.empty:
-
         preview_df = df.drop(columns="Load Factor Numeric").copy()
-
         for c in preview_df.columns:
-
             preview_df[c] = preview_df[c].astype(str)
-
         st.dataframe(preview_df, use_container_width=True)
-
         st.success(
-
             f"Processed {len(df)} flights ({station}, filters: {filter_options}, types: {selected_types or 'any'}, NEO: {'on' if neo_only else 'off'})."
-
         )
-
         with st.spinner("Generating PDF…"):
-
             pdf = BA_PDF(date_str, "P", "mm", "A4")
-
             pdf.set_auto_page_break(True, 10)
-
             pdf.add_page()
-
             pdf.flight_table(df)
-
             smart_name = build_short_filename(selected_date, filter_options)
-
             tmp = f"/tmp/{smart_name}"
-
             pdf.output(tmp)
-
         with open(tmp, "rb") as f:
-
             st.download_button(
-
                 "Download MayFly PDF",
-
                 f,
-
                 file_name=smart_name,
-
             )
-
         st.info("Confidential © 2025  |  Generated by British Airways")
-
     else:
-
         st.error("No valid flights found with current filter.")
- 
